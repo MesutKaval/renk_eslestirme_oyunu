@@ -4,6 +4,8 @@ Tarayicida calisan, pastel renkli toplara sahip bir hafiza eslestirme oyunu. 4x4
 
 **Oyna:** [https://mesutkaval.github.io/renk_eslestirme_oyunu/](https://mesutkaval.github.io/renk_eslestirme_oyunu/)
 
+![Renk Eslestirme Oyunu](screen_shot.png)
+
 ## Ozellikler
 
 - 4x4 grid, 8 farkli renk cifti
@@ -19,7 +21,7 @@ Tarayicida calisan, pastel renkli toplara sahip bir hafiza eslestirme oyunu. 4x4
 
 ### Tarayicida (basit)
 
-`memory-game.html` dosyasini tarayicida ac. Skorlar `localStorage`'a kaydedilir.
+`index.html` dosyasini tarayicida ac. Skorlar `localStorage`'a kaydedilir.
 
 ### Sunucu ile (skor kaydi icin)
 
