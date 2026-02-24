@@ -479,7 +479,13 @@
             }
           })
           .catch(function () {
-            bestScoreEl.textContent = '';
+            // Sunucu yok, localStorage'dan oku
+            var saved = localStorage.getItem('bestTime');
+            if (saved !== null) {
+              bestScoreEl.textContent = 'EN IYI SURE: ' + formatTime(parseInt(saved));
+            } else {
+              bestScoreEl.textContent = '';
+            }
           });
       }
 
@@ -499,7 +505,16 @@
             }
           })
           .catch(function () {
-            newRecordEl.textContent = '';
+            // Sunucu yok, localStorage'a kaydet
+            var saved = localStorage.getItem('bestTime');
+            var best = saved !== null ? parseInt(saved) : null;
+            if (best === null || timeMs < best) {
+              localStorage.setItem('bestTime', timeMs);
+              newRecordEl.textContent = 'YENI REKOR!';
+              bestScoreEl.textContent = 'EN IYI SURE: ' + formatTime(timeMs);
+            } else {
+              newRecordEl.textContent = 'En iyi: ' + formatTime(best);
+            }
           });
       }
 
