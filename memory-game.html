@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pastel Hafıza Eşleştirme Oyunu</title>
+  <title>Renk Eşleştirme Oyunu</title>
   <style>
     /* ===== RESET & BASE ===== */
     *, *::before, *::after {
@@ -45,7 +45,7 @@
 
     /* ===== NEW GAME BUTTON ===== */
     .new-game-btn {
-      margin-top: 28px;
+      margin-top: 33px;
       padding: 16px 48px;
       font-size: 20px;
       font-weight: 600;
@@ -79,31 +79,31 @@
     }
 
     .header h1 {
-      font-size: 36px;
+      font-size: 38px;
       font-weight: 700;
       color: #e8a84c;
       letter-spacing: 4px;
-      margin: 0 0 20px 0;
+      margin: 0 0 31px 0;
       text-shadow: 0 0 16px rgba(232, 168, 76, 0.3);
     }
 
     .timer-wrapper {
-      margin-bottom: 20px;
+      margin-bottom: 13px;
     }
 
     /* ===== BEST SCORE ===== */
     .best-score {
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 600;
       color: #5c8ce8;
       letter-spacing: 1px;
-      margin-bottom: 12px;
+      margin-bottom: 32px;
       min-height: 28px;
     }
 
     /* ===== TIMER ===== */
     .timer-display {
-      font-size: 36px;
+      font-size: 43px;
       font-weight: 300;
       color: #e87272;
       letter-spacing: 2px;
@@ -122,8 +122,9 @@
     .game-board {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-      padding: 32px;
+      gap: 25px;
+      padding: 37px;
+      margin-top: 18px;
       background: rgba(18, 135, 122, 0.25);
       border-radius: 24px;
       backdrop-filter: blur(8px);
@@ -133,8 +134,8 @@
 
     /* ===== CARD BUTTON ===== */
     .card-btn {
-      width: 90px;
-      height: 90px;
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
       border: none;
       cursor: pointer;
@@ -296,7 +297,7 @@
 
   <!-- Header -->
   <div class="header">
-    <h1>HAFIZA EŞLEŞTİRME OYUNU</h1>
+    <h1>RENK EŞLEŞTİRME OYUNU</h1>
     <div class="best-score" id="bestScore"></div>
     <div class="timer-wrapper">
       <div class="timer-display" id="timer">00:00.000</div>
@@ -339,41 +340,66 @@
         return audioCtx;
       }
 
-      // ── Sound: Geiger-Müller counter click ──
+      // ── Sound: Click [square + triangle + sine] ──
       function playClickSound() {
         var ctx = getAudioCtx();
         var now = ctx.currentTime;
-        var bufferSize = Math.floor(ctx.sampleRate * 0.004);
-        var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        var data = buffer.getChannelData(0);
 
-        for (var i = 0; i < bufferSize; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
+        var dist = ctx.createWaveShaper();
+        var k = 0.0;
+        var curve = new Float32Array(256);
+        for (var i = 0; i < 256; i++) {
+          var x = (i * 2) / 256 - 1;
+          curve[i] = k === 0 ? x : ((Math.PI + k) * x) / (Math.PI + k * Math.abs(x));
         }
+        dist.curve = curve; dist.oversample = '4x';
 
-        var source = ctx.createBufferSource();
-        source.buffer = buffer;
+        var lpf = ctx.createBiquadFilter();
+        lpf.type = 'lowpass';
+        lpf.frequency.setValueAtTime(1557, now);
 
-        var hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = 800;
+        var masterGain = ctx.createGain();
+        masterGain.gain.setValueAtTime(0, now);
+        masterGain.gain.linearRampToValueAtTime(0.40, now + 0.0000);
+        masterGain.gain.linearRampToValueAtTime(0.000, now + 0.0290);
+        masterGain.gain.linearRampToValueAtTime(0, now + 0.0490);
 
-        var bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = 3200;
-        bp.Q.value = 0.8;
+        dist.connect(lpf);
+        lpf.connect(masterGain);
+        masterGain.connect(ctx.destination);
 
-        var gain = ctx.createGain();
-        gain.gain.setValueAtTime(1.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+        // square
+        (function() {
+          var src = ctx.createOscillator();
+          src.type = 'square';
+          src.frequency.setValueAtTime(1058, now);
+          src.frequency.exponentialRampToValueAtTime(902, now + 0.0017);
+          var g = ctx.createGain(); g.gain.value = 0.3333;
+          src.connect(g); g.connect(dist);
+          src.start(now); src.stop(now + 0.079);
+        })();
 
-        source.connect(hp);
-        hp.connect(bp);
-        bp.connect(gain);
-        gain.connect(ctx.destination);
+        // triangle
+        (function() {
+          var src = ctx.createOscillator();
+          src.type = 'triangle';
+          src.frequency.setValueAtTime(1058, now);
+          src.frequency.exponentialRampToValueAtTime(902, now + 0.0017);
+          var g = ctx.createGain(); g.gain.value = 0.3333;
+          src.connect(g); g.connect(dist);
+          src.start(now); src.stop(now + 0.079);
+        })();
 
-        source.start(now);
-        source.stop(now + 0.05);
+        // sine
+        (function() {
+          var src = ctx.createOscillator();
+          src.type = 'sine';
+          src.frequency.setValueAtTime(1058, now);
+          src.frequency.exponentialRampToValueAtTime(902, now + 0.0017);
+          var g = ctx.createGain(); g.gain.value = 0.3333;
+          src.connect(g); g.connect(dist);
+          src.start(now); src.stop(now + 0.079);
+        })();
       }
 
       // ── Sound: Match found (rising two-tone chime) ──
@@ -387,7 +413,7 @@
 
           var gain = ctx.createGain();
           gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
-          gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + i * 0.12 + 0.04);
+          gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + i * 0.12 + 0.04);
           gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
 
           osc.connect(gain);
@@ -618,7 +644,7 @@
         var card = cards[index];
         if (card.matched) return;
 
-        // Geiger click sound on every valid click
+        // Click sound on every valid click
         playClickSound();
 
         // If there are 2 unmatched cards showing, handle re-click
@@ -941,6 +967,279 @@
       window.addEventListener('resize', resize);
       init();
       requestAnimationFrame(render);
+    })();
+  </script>
+
+  <!-- ===== EDIT MODE (E tuşu ile aç/kapa) ===== -->
+  <script>
+    (function() {
+      var editMode = false;
+      var editPanel = null;
+      var editTargets = [];
+      var selectedTarget = null;
+      var selectedDef = null;
+      var dragging = false;
+      var dragStartY = 0;
+      var dragStartMargin = 0;
+
+      // Düzenlenebilir elemanlar ve etiketleri
+      // scrollTarget: scroll ile boyutu değişecek alt eleman (yoksa kendisi)
+      // scrollProp: scroll ile değişecek property ('fontSize' veya 'scale')
+      // scaleProps: board gibi çoklu boyut ayarı gereken elemanlar için
+      var targetDefs = [
+        { sel: '.header h1', label: 'Başlık', prop: 'marginBottom', scrollProp: 'fontSize' },
+        { sel: '#bestScore', label: 'En İyi Skor', prop: 'marginBottom', scrollProp: 'fontSize' },
+        {
+          sel: '.timer-wrapper', label: 'Süre Paneli', prop: 'marginBottom',
+          scrollProp: 'fontSize', scrollTarget: '.timer-display'
+        },
+        {
+          sel: '#board', label: 'Board', prop: 'marginTop',
+          scrollProp: 'scale',
+          scaleTargets: [
+            { sel: '#board', props: ['gap', 'padding'] },
+            { sel: '.card-btn', props: ['width', 'height'] }
+          ]
+        },
+        { sel: '#newGameBtn', label: 'Yeni Oyun Btn', prop: 'marginTop', scrollProp: 'fontSize' }
+      ];
+
+      function createPanel() {
+        editPanel = document.createElement('div');
+        editPanel.id = 'editPanel';
+        editPanel.style.cssText = 'position:fixed;top:12px;left:12px;z-index:9999;background:rgba(30,30,30,0.95);' +
+          'border:2px solid #e8a84c;border-radius:12px;padding:16px;color:#eee;font-family:monospace;font-size:13px;' +
+          'min-width:300px;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+
+        editPanel.innerHTML =
+          '<div style="font-size:15px;font-weight:bold;color:#e8a84c;margin-bottom:12px;">DÜZENLEME MODU' +
+          '<span style="font-size:11px;color:#888;margin-left:8px;">(E ile kapat)</span></div>' +
+          '<div style="color:#aaa;font-size:11px;margin-bottom:10px;">Elemana tıkla → Yukarı/aşağı sürükle (margin)<br>' +
+          'Seçiliyken scroll → boyut ayarla (font-size / board ölçeği)</div>' +
+          '<div id="editInfo" style="margin-bottom:12px;min-height:60px;padding:8px;background:rgba(0,0,0,0.3);border-radius:8px;">' +
+          '<span style="color:#666;">Bir eleman seçin...</span></div>' +
+          '<div id="editOutput" style="display:none;margin-bottom:12px;padding:8px;background:rgba(0,0,0,0.4);border-radius:8px;' +
+          'max-height:200px;overflow-y:auto;font-size:11px;white-space:pre;color:#5cc88c;"></div>' +
+          '<button id="editSaveBtn" style="background:#5cc88c;color:#1a1a2e;border:none;border-radius:8px;padding:8px 20px;' +
+          'font-weight:bold;cursor:pointer;font-size:13px;width:100%;">Kaydet & Kopyala</button>';
+
+        document.body.appendChild(editPanel);
+
+        document.getElementById('editSaveBtn').addEventListener('click', saveValues);
+      }
+
+      function removePanel() {
+        if (editPanel) {
+          editPanel.remove();
+          editPanel = null;
+        }
+      }
+
+      function getDefForEl(el) {
+        for (var i = 0; i < targetDefs.length; i++) {
+          if (document.querySelector(targetDefs[i].sel) === el) return targetDefs[i];
+        }
+        return null;
+      }
+
+      function highlightTargets(on) {
+        targetDefs.forEach(function(def) {
+          var el = document.querySelector(def.sel);
+          if (!el) return;
+          if (on) {
+            el.style.outline = '2px dashed rgba(232,168,76,0.5)';
+            el.style.outlineOffset = '4px';
+            el.style.cursor = 'pointer';
+            editTargets.push(el);
+          } else {
+            el.style.outline = '';
+            el.style.outlineOffset = '';
+            el.style.cursor = '';
+          }
+        });
+        if (!on) editTargets = [];
+      }
+
+      function selectTarget(el) {
+        if (selectedTarget) {
+          selectedTarget.style.outline = '2px dashed rgba(232,168,76,0.5)';
+        }
+        selectedTarget = el;
+        selectedDef = getDefForEl(el);
+        el.style.outline = '2px solid #e8a84c';
+        updateInfo();
+      }
+
+      function updateInfo() {
+        if (!selectedTarget || !selectedDef) return;
+        var info = document.getElementById('editInfo');
+        var cs = window.getComputedStyle(selectedTarget);
+        var html = '<div style="color:#e8a84c;font-weight:bold;margin-bottom:6px;">' + selectedDef.label + '</div>' +
+          '<div>margin-top: <span style="color:#e87272;">' + cs.marginTop + '</span></div>' +
+          '<div>margin-bottom: <span style="color:#e87272;">' + cs.marginBottom + '</span></div>';
+
+        if (selectedDef.scrollProp === 'scale' && selectedDef.scaleTargets) {
+          // Board: topları ve gap/padding göster
+          selectedDef.scaleTargets.forEach(function(st) {
+            var stEl = document.querySelector(st.sel);
+            if (!stEl) return;
+            var stCs = window.getComputedStyle(stEl);
+            st.props.forEach(function(p) {
+              html += '<div>' + st.sel + ' ' + p + ': <span style="color:#5c8ce8;">' + stCs[p] + '</span></div>';
+            });
+          });
+        } else {
+          // Font-size göster (scrollTarget varsa onunkini)
+          var fontEl = selectedDef.scrollTarget ? document.querySelector(selectedDef.scrollTarget) : selectedTarget;
+          var fontCs = window.getComputedStyle(fontEl);
+          html += '<div>font-size: <span style="color:#5c8ce8;">' + fontCs.fontSize + '</span></div>';
+        }
+
+        html += '<div>padding: <span style="color:#aaa;">' + cs.padding + '</span></div>';
+        info.innerHTML = html;
+      }
+
+      function onTargetMouseDown(e) {
+        if (!editMode) return;
+        var el = e.currentTarget;
+        selectTarget(el);
+        var def = getDefForEl(el);
+        dragging = true;
+        dragStartY = e.clientY;
+        var cs = window.getComputedStyle(el);
+        dragStartMargin = parseInt(cs[def.prop]) || 0;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function onMouseMove(e) {
+        if (!dragging || !selectedTarget || !selectedDef) return;
+        var delta = e.clientY - dragStartY;
+        var newMargin = Math.max(0, dragStartMargin + delta);
+        selectedTarget.style[selectedDef.prop] = newMargin + 'px';
+        updateInfo();
+      }
+
+      function onMouseUp() {
+        dragging = false;
+      }
+
+      function onWheel(e) {
+        if (!editMode || !selectedTarget || !selectedDef) return;
+        e.preventDefault();
+        var delta = e.deltaY > 0 ? -1 : 1;
+
+        if (selectedDef.scrollProp === 'scale' && selectedDef.scaleTargets) {
+          // Board: tüm ilgili elemanların boyut property'lerini orantılı değiştir
+          selectedDef.scaleTargets.forEach(function(st) {
+            var stEl = st.sel === '.card-btn' ? document.querySelectorAll(st.sel) : [document.querySelector(st.sel)];
+            stEl.forEach(function(el) {
+              if (!el) return;
+              var cs = window.getComputedStyle(el);
+              st.props.forEach(function(p) {
+                var current = parseFloat(cs[p]);
+                var newVal = Math.max(4, current + delta);
+                el.style[p] = newVal + 'px';
+              });
+            });
+          });
+        } else {
+          // Font-size değiştir (scrollTarget varsa o elemanda)
+          var fontEl = selectedDef.scrollTarget ? document.querySelector(selectedDef.scrollTarget) : selectedTarget;
+          var cs = window.getComputedStyle(fontEl);
+          var currentSize = parseFloat(cs.fontSize);
+          var newSize = Math.max(8, currentSize + delta);
+          fontEl.style.fontSize = newSize + 'px';
+        }
+        updateInfo();
+      }
+
+      function saveValues() {
+        var output = document.getElementById('editOutput');
+        var lines = [];
+        lines.push('/* ── Konum Değerleri ── */');
+        targetDefs.forEach(function(def) {
+          var el = document.querySelector(def.sel);
+          if (!el) return;
+          var cs = window.getComputedStyle(el);
+          lines.push(def.label + ' (' + def.sel + '):');
+          lines.push('  margin-top: ' + cs.marginTop);
+          lines.push('  margin-bottom: ' + cs.marginBottom);
+
+          if (def.scrollProp === 'scale' && def.scaleTargets) {
+            def.scaleTargets.forEach(function(st) {
+              var stEl = document.querySelector(st.sel);
+              if (!stEl) return;
+              var stCs = window.getComputedStyle(stEl);
+              st.props.forEach(function(p) {
+                lines.push('  ' + st.sel + ' ' + p + ': ' + stCs[p]);
+              });
+            });
+          } else {
+            var fontEl = def.scrollTarget ? document.querySelector(def.scrollTarget) : el;
+            var fontCs = window.getComputedStyle(fontEl);
+            lines.push('  font-size: ' + fontCs.fontSize);
+          }
+
+          lines.push('  padding: ' + cs.padding);
+          lines.push('');
+        });
+        var text = lines.join('\n');
+        console.log(text);
+        output.style.display = 'block';
+        output.textContent = text;
+
+        // Clipboard'a kopyala
+        navigator.clipboard.writeText(text).then(function() {
+          var btn = document.getElementById('editSaveBtn');
+          var orig = btn.textContent;
+          btn.textContent = 'Kopyalandı!';
+          btn.style.background = '#e8a84c';
+          setTimeout(function() {
+            btn.textContent = orig;
+            btn.style.background = '#5cc88c';
+          }, 1500);
+        });
+      }
+
+      function enableEditMode() {
+        editMode = true;
+        createPanel();
+        highlightTargets(true);
+
+        editTargets.forEach(function(el) {
+          el.addEventListener('mousedown', onTargetMouseDown);
+        });
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('wheel', onWheel, { passive: false });
+      }
+
+      function disableEditMode() {
+        editMode = false;
+        editTargets.forEach(function(el) {
+          el.removeEventListener('mousedown', onTargetMouseDown);
+        });
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('wheel', onWheel);
+        highlightTargets(false);
+        selectedTarget = null;
+        selectedDef = null;
+        dragging = false;
+        removePanel();
+      }
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'e' || e.key === 'E') {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+          if (editMode) {
+            disableEditMode();
+          } else {
+            enableEditMode();
+          }
+        }
+      });
     })();
   </script>
 
