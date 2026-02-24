@@ -10,6 +10,7 @@
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
@@ -54,6 +55,7 @@
       border: none;
       border-radius: 30px;
       cursor: pointer;
+      touch-action: manipulation;
       transition: transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease;
       box-shadow: 0 0 16px 4px rgba(92, 200, 140, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2);
       letter-spacing: 0.5px;
@@ -141,6 +143,8 @@
       cursor: pointer;
       position: relative;
       outline: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
       transition: transform 0.2s ease, box-shadow 0.3s ease, background-color 0.5s ease;
 
       /* Default: soft white pastel glow */
@@ -262,6 +266,7 @@
       border: none;
       border-radius: 30px;
       cursor: pointer;
+      touch-action: manipulation;
       transition: transform 0.2s ease, box-shadow 0.3s ease;
       box-shadow: 0 4px 16px rgba(196, 168, 212, 0.3);
     }
