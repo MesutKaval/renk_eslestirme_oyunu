@@ -353,66 +353,38 @@
         return audioCtx;
       }
 
-      // ── Sound: Click [square + triangle + sine] ──
+      // ── Sound: Click [sine 2000Hz, short tap] ──
       function playClickSound() {
         var ctx = getAudioCtx();
         var now = ctx.currentTime;
 
-        var dist = ctx.createWaveShaper();
-        var k = 0.0;
-        var curve = new Float32Array(256);
-        for (var i = 0; i < 256; i++) {
-          var x = (i * 2) / 256 - 1;
-          curve[i] = k === 0 ? x : ((Math.PI + k) * x) / (Math.PI + k * Math.abs(x));
-        }
-        dist.curve = curve; dist.oversample = '4x';
-
-        var lpf = ctx.createBiquadFilter();
-        lpf.type = 'lowpass';
-        lpf.frequency.setValueAtTime(1557, now);
-
         var masterGain = ctx.createGain();
         masterGain.gain.setValueAtTime(0, now);
-        masterGain.gain.linearRampToValueAtTime(0.40, now + 0.0000);
-        masterGain.gain.linearRampToValueAtTime(0.000, now + 0.0290);
-        masterGain.gain.linearRampToValueAtTime(0, now + 0.0490);
+        masterGain.gain.linearRampToValueAtTime(0.8, now + 0.001);
+        masterGain.gain.linearRampToValueAtTime(0.0000, now + 0.0020);
+        masterGain.gain.setValueAtTime(0.0000, now + 0.87);
+        masterGain.gain.linearRampToValueAtTime(0, now + 1.0700);
 
-        dist.connect(lpf);
-        lpf.connect(masterGain);
+        var filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(5000, now);
+        filter.Q.setValueAtTime(0, now);
+
+        filter.connect(masterGain);
         masterGain.connect(ctx.destination);
 
-        // square
-        (function() {
-          var src = ctx.createOscillator();
-          src.type = 'square';
-          src.frequency.setValueAtTime(1058, now);
-          src.frequency.exponentialRampToValueAtTime(902, now + 0.0017);
-          var g = ctx.createGain(); g.gain.value = 0.3333;
-          src.connect(g); g.connect(dist);
-          src.start(now); src.stop(now + 0.079);
-        })();
+        var osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2000, now);
 
-        // triangle
-        (function() {
-          var src = ctx.createOscillator();
-          src.type = 'triangle';
-          src.frequency.setValueAtTime(1058, now);
-          src.frequency.exponentialRampToValueAtTime(902, now + 0.0017);
-          var g = ctx.createGain(); g.gain.value = 0.3333;
-          src.connect(g); g.connect(dist);
-          src.start(now); src.stop(now + 0.079);
-        })();
+        var mixGain = ctx.createGain();
+        mixGain.gain.setValueAtTime(0.5, now);
 
-        // sine
-        (function() {
-          var src = ctx.createOscillator();
-          src.type = 'sine';
-          src.frequency.setValueAtTime(1058, now);
-          src.frequency.exponentialRampToValueAtTime(902, now + 0.0017);
-          var g = ctx.createGain(); g.gain.value = 0.3333;
-          src.connect(g); g.connect(dist);
-          src.start(now); src.stop(now + 0.079);
-        })();
+        osc.connect(mixGain);
+        mixGain.connect(filter);
+
+        osc.start(now);
+        osc.stop(now + 1.120);
       }
 
       // ── Sound: Match found (rising two-tone chime) ──
