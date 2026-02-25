@@ -4,7 +4,7 @@ const path = require('path');
 
 const PORT = 3000;
 const SCORES_FILE = path.join(__dirname, 'scores.json');
-const GAME_FILE = path.join(__dirname, 'memory-game.html');
+const GAME_FILE = path.join(__dirname, 'index.html');
 
 function readScores() {
   try {

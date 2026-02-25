@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Renk Eşleştirme Oyunu</title>
   <style>
     /* ===== RESET & BASE ===== */
@@ -18,14 +18,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       background: #000000;
       font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
       color: #b0a4b8;
       user-select: none;
       overflow: hidden;
       position: relative;
-      padding: 24px 0;
+      padding: 12px 0;
+      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      overscroll-behavior: none;
     }
 
     /* ===== PARTICLE CANVAS ===== */
@@ -46,7 +49,7 @@
 
     /* ===== NEW GAME BUTTON ===== */
     .new-game-btn {
-      margin-top: 33px;
+      margin-top: 20px;
       padding: 16px 48px;
       font-size: 20px;
       font-weight: 600;
@@ -85,7 +88,7 @@
       font-weight: 700;
       color: #e8a84c;
       letter-spacing: 4px;
-      margin: 0 0 31px 0;
+      margin: 0 0 20px 0;
       text-shadow: 0 0 16px rgba(232, 168, 76, 0.3);
     }
 
@@ -99,7 +102,7 @@
       font-weight: 600;
       color: #5c8ce8;
       letter-spacing: 1px;
-      margin-bottom: 32px;
+      margin-bottom: 20px;
       min-height: 28px;
     }
 
@@ -126,7 +129,7 @@
       grid-template-columns: repeat(4, 1fr);
       gap: 25px;
       padding: 37px;
-      margin-top: 18px;
+      margin-top: 10px;
       background: rgba(18, 135, 122, 0.25);
       border-radius: 24px;
       backdrop-filter: blur(8px);
@@ -145,7 +148,9 @@
       outline: none;
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
-      transition: transform 0.2s ease, box-shadow 0.3s ease, background-color 0.5s ease;
+      -webkit-touch-callout: none;
+      transition: transform 0.1s ease, box-shadow 0.15s ease, background-color 0.3s ease;
+      will-change: transform, box-shadow, background-color;
 
       /* Default: soft white pastel glow */
       background-color: #d8d0d0;
@@ -164,13 +169,16 @@
       );
     }
 
-    .card-btn:hover:not(.matched):not(.flipped):not([disabled]) {
-      transform: scale(1.06);
-      box-shadow:
-        0 0 18px 7px rgba(216, 208, 208, 0.5),
-        0 0 36px 14px rgba(216, 208, 208, 0.2),
-        inset 0 -4px 8px rgba(0, 0, 0, 0.08),
-        inset 0 4px 8px rgba(255, 255, 255, 0.6);
+    /* Hover only for mouse/pointer devices — prevents sticky hover on mobile */
+    @media (hover: hover) and (pointer: fine) {
+      .card-btn:hover:not(.matched):not(.flipped):not([disabled]) {
+        transform: scale(1.06);
+        box-shadow:
+          0 0 18px 7px rgba(216, 208, 208, 0.5),
+          0 0 36px 14px rgba(216, 208, 208, 0.2),
+          inset 0 -4px 8px rgba(0, 0, 0, 0.08),
+          inset 0 4px 8px rgba(255, 255, 255, 0.6);
+      }
     }
 
     .card-btn:active:not(.matched):not(.flipped):not([disabled]) {
@@ -179,7 +187,7 @@
 
     /* Revealed state: color shown */
     .card-btn.flipped {
-      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      transition: background-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     /* Matched state: fade out softly */
@@ -207,7 +215,7 @@
 
     /* Reset animation for non-matching */
     .card-btn.resetting {
-      transition: background-color 0.5s ease, box-shadow 0.5s ease;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
     }
 
     /* ===== COMPLETION OVERLAY ===== */
@@ -625,6 +633,45 @@
           'inset 0 4px 8px rgba(255,255,255,0.6)';
       }
 
+      // ── Fast touch handler — eliminates 300ms click delay on mobile ──
+      var isTouchDevice = false;
+
+      function addFastClick(el, callback) {
+        var touchMoved = false;
+        var touchStartTime = 0;
+
+        el.addEventListener('touchstart', function (e) {
+          isTouchDevice = true;
+          touchMoved = false;
+          touchStartTime = performance.now();
+          // Resume AudioContext on first touch (iOS requirement)
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+        }, { passive: true });
+
+        el.addEventListener('touchmove', function () {
+          touchMoved = true;
+        }, { passive: true });
+
+        el.addEventListener('touchend', function (e) {
+          if (touchMoved) return;
+          // Only fire if touch was short (not a long press)
+          if (performance.now() - touchStartTime > 500) return;
+          e.preventDefault(); // Prevent subsequent click/mousedown
+          callback();
+        });
+
+        // Keep click for mouse/desktop — but skip if touch already fired
+        el.addEventListener('click', function (e) {
+          if (isTouchDevice) {
+            e.preventDefault();
+            return;
+          }
+          callback();
+        });
+      }
+
       // ── Create a single card button ──
       function createCardButton(cardData, index) {
         var btn = document.createElement('button');
@@ -632,7 +679,7 @@
         btn.setAttribute('data-index', index);
         btn.setAttribute('aria-label', 'Kart ' + (index + 1));
 
-        btn.addEventListener('click', function () {
+        addFastClick(btn, function () {
           onCardClick(index);
         });
 
@@ -727,31 +774,35 @@
         if (cardA.color.name === cardB.color.name) {
           // Match found
           playMatchSound();
-          isLocked = true;
           matchedCount++;
+
+          // Mark matched immediately so clicks are not blocked
+          cardA.matched = true;
+          cardB.matched = true;
+          flippedCards = [];
 
           // Stop timer immediately on last match
           var gameFinished = (matchedCount === PASTEL_COLORS.length);
           var finalElapsed = 0;
           if (gameFinished) {
             finalElapsed = stopTimer();
+            isLocked = true; // only lock if game is finished (for overlay)
           }
 
+          // Delayed visual feedback (matched class + disable)
+          var _gameFinished = gameFinished;
+          var _finalElapsed = finalElapsed;
           setTimeout(function () {
-            cardA.matched = true;
-            cardB.matched = true;
             cardA.el.classList.add('matched');
             cardB.el.classList.add('matched');
             cardA.el.disabled = true;
             cardB.el.disabled = true;
 
-            flippedCards = [];
-            isLocked = false;
-
             // Check win condition
-            if (gameFinished) {
+            if (_gameFinished) {
+              isLocked = false;
               playWinSound();
-              onGameComplete(finalElapsed);
+              onGameComplete(_finalElapsed);
             }
           }, 500);
         } else {
@@ -873,16 +924,41 @@
       }
 
       // ── Event: Play Again / New Game buttons ──
-      playAgainBtn.addEventListener('click', function () {
+      addFastClick(playAgainBtn, function () {
         initGame();
       });
 
-      newGameBtn.addEventListener('click', function () {
+      addFastClick(newGameBtn, function () {
         initGame();
       });
 
       // ── Start the game ──
       initGame();
+
+      // ── Global touch optimizations ──
+      // Prevent double-tap zoom on the entire document
+      var lastTouchEnd = 0;
+      document.addEventListener('touchend', function (e) {
+        var now = performance.now();
+        if (now - lastTouchEnd < 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
+
+      // Prevent context menu on long press (mobile)
+      document.addEventListener('contextmenu', function (e) {
+        if (isTouchDevice) {
+          e.preventDefault();
+        }
+      });
+
+      // Ensure AudioContext is ready on first user touch anywhere
+      document.addEventListener('touchstart', function () {
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }, { passive: true, once: true });
 
     })();
 
