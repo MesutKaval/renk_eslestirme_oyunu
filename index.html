@@ -481,7 +481,35 @@
       var bestScoreEl = document.getElementById('bestScore');
       var newRecordEl = document.getElementById('newRecord');
 
+      // Detect if running on local server (has /api) or static hosting (GitHub Pages)
+      var isLocalServer = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+
+      function loadBestScoreLocal() {
+        var saved = localStorage.getItem('bestTime');
+        if (saved !== null) {
+          bestScoreEl.textContent = 'EN IYI SURE: ' + formatTime(parseInt(saved));
+        } else {
+          bestScoreEl.textContent = '';
+        }
+      }
+
+      function submitScoreLocal(timeMs) {
+        var saved = localStorage.getItem('bestTime');
+        var best = saved !== null ? parseInt(saved) : null;
+        if (best === null || timeMs < best) {
+          localStorage.setItem('bestTime', String(timeMs));
+          newRecordEl.textContent = 'YENI REKOR!';
+          bestScoreEl.textContent = 'EN IYI SURE: ' + formatTime(timeMs);
+        } else {
+          newRecordEl.textContent = 'En iyi: ' + formatTime(best);
+        }
+      }
+
       function loadBestScore() {
+        if (!isLocalServer) {
+          loadBestScoreLocal();
+          return;
+        }
         fetch('/api/scores')
           .then(function (res) { return res.json(); })
           .then(function (data) {
@@ -492,17 +520,15 @@
             }
           })
           .catch(function () {
-            // Sunucu yok, localStorage'dan oku
-            var saved = localStorage.getItem('bestTime');
-            if (saved !== null) {
-              bestScoreEl.textContent = 'EN IYI SURE: ' + formatTime(parseInt(saved));
-            } else {
-              bestScoreEl.textContent = '';
-            }
+            loadBestScoreLocal();
           });
       }
 
       function submitScore(timeMs) {
+        if (!isLocalServer) {
+          submitScoreLocal(timeMs);
+          return;
+        }
         fetch('/api/scores', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -518,16 +544,7 @@
             }
           })
           .catch(function () {
-            // Sunucu yok, localStorage'a kaydet
-            var saved = localStorage.getItem('bestTime');
-            var best = saved !== null ? parseInt(saved) : null;
-            if (best === null || timeMs < best) {
-              localStorage.setItem('bestTime', timeMs);
-              newRecordEl.textContent = 'YENI REKOR!';
-              bestScoreEl.textContent = 'EN IYI SURE: ' + formatTime(timeMs);
-            } else {
-              newRecordEl.textContent = 'En iyi: ' + formatTime(best);
-            }
+            submitScoreLocal(timeMs);
           });
       }
 
